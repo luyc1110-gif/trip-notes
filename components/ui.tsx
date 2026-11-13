@@ -99,6 +99,13 @@ const ICONS: Record<string, ReactNode> = {
       <rect x="4" y="14" width="16" height="6" rx="2" />
     </>
   ),
+  edit: (
+    <>
+      <path d="M4 20l1-5L16 4l4 4L9 19z" />
+      <path d="M14 6l4 4" />
+    </>
+  ),
+  chart: <path d="M5 20V10M12 20V4M19 20v-7" />,
 };
 
 export function Icon({ name, size = 24, stroke = 2 }: { name: string; size?: number; stroke?: number }) {
@@ -132,7 +139,7 @@ export function Grip() {
   );
 }
 
-export function Avatar({ member, size }: { member: Pick<Member, 'name' | 'color'>; size?: 'sm' | 'lg' }) {
+export function Avatar({ member, size }: { member: Pick<Member, 'name' | 'color'>; size?: 'xs' | 'sm' | 'lg' | 'xl' | 'xxl' }) {
   const ch = member.name.trim().slice(-1) || '?';
   return (
     <span className={`avatar ${size ?? ''} c${member.color % 8}`} aria-hidden="true">
