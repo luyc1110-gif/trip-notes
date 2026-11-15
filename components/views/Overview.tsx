@@ -5,7 +5,7 @@ import { PLACE_KINDS, type ItineraryItem } from '@/lib/types';
 import type { Ctx } from '../TripApp';
 import { Scene } from '../Scenes';
 import { DayRibbon, durLabel, hhmm, stopStates, useNow, useWidth, type StopStates } from '../timeline';
-import { Icon, daysUntil, md, todayIso, tripDays } from '../ui';
+import { Icon, daysUntil, md, placeUrl, todayIso, tripDays } from '../ui';
 
 const kind = (key: string) => PLACE_KINDS.find((k) => k.key === key)?.label ?? '其他';
 
@@ -199,8 +199,12 @@ function RouteMap({ items, states, now }: { items: ItineraryItem[]; states: Stop
             <span className={`rt-node num ${st}`} style={{ left: p.x, top: p.y }}>
               {st === 'done' ? <Icon name="check" size={18} stroke={3} /> : i + 1}
             </span>
-            <div
+            <a
               className={`rt-label ${left ? '' : 'r'} ${st}`}
+              href={placeUrl(it)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`在 Google 地圖開啟「${it.name}」`}
               style={left ? { left: p.x + 34, right: EDGE + 30, top: p.y } : { right: w - p.x + 34, left: EDGE + 30, top: p.y }}
             >
               {st === 'next' && (
@@ -217,7 +221,7 @@ function RouteMap({ items, states, now }: { items: ItineraryItem[]; states: Stop
                 {kind(it.category)}
                 {it.note ? `・${it.note}` : ''}
               </span>
-            </div>
+            </a>
           </div>
         );
       })}

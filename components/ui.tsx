@@ -191,3 +191,15 @@ export function tripDays(start: string, end: string): string[] {
 export function daysUntil(fromIso: string, toIsoStr: string): number {
   return Math.round((parseDate(toIsoStr).getTime() - parseDate(fromIso).getTime()) / 86400000);
 }
+
+// ── Google 地圖連結 ─────────────────────────────────────────
+
+type Place = { name: string; lat: number | null; lng: number | null; placeId: string | null };
+
+/** 在 Google 地圖開啟這個地點的頁面（手機上會跳到 Google 地圖 App） */
+export function placeUrl(p: Place): string {
+  const base = 'https://www.google.com/maps/search/?api=1';
+  if (p.placeId) return `${base}&query=${encodeURIComponent(p.name)}&query_place_id=${encodeURIComponent(p.placeId)}`;
+  if (p.lat !== null && p.lng !== null) return `${base}&query=${p.lat},${p.lng}`;
+  return `${base}&query=${encodeURIComponent(p.name)}`;
+}

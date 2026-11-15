@@ -5,17 +5,9 @@ import { PLACE_KINDS, type ItineraryItem } from '@/lib/types';
 import type { Ctx } from '../TripApp';
 import MapView, { searchPlaces, type PlaceHit } from '../MapView';
 import { DayRibbon, durLabel, hhmm, mins, stopStates, useNow } from '../timeline';
-import { Grip, Icon, longDate, md, todayIso, tripDays } from '../ui';
+import { Grip, Icon, longDate, md, placeUrl, todayIso, tripDays } from '../ui';
 
 const kindLabel = (key: string) => PLACE_KINDS.find((k) => k.key === key)?.label ?? '其他';
-
-function navUrl(it: ItineraryItem): string {
-  if (it.lat !== null && it.lng !== null) {
-    const pid = it.placeId ? `&destination_place_id=${encodeURIComponent(it.placeId)}` : '';
-    return `https://www.google.com/maps/dir/?api=1&destination=${it.lat},${it.lng}${pid}`;
-  }
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(it.name)}`;
-}
 
 type Draft = Omit<ItineraryItem, 'id' | 'sort'>;
 
@@ -30,7 +22,6 @@ export default function Itinerary({ ctx }: { ctx: Ctx }) {
     route.id && days.includes(route.id) ? route.id : days.includes(today) ? today : days[0],
   );
   const [sheet, setSheet] = useState<{ item?: ItineraryItem } | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
 
   const dayItems = useMemo(() => snap.itinerary.filter((i) => i.day === day), [snap.itinerary, day]);
 
@@ -118,7 +109,6 @@ export default function Itinerary({ ctx }: { ctx: Ctx }) {
         onPick={(d) => {
           setDay(d);
           setOrder(null);
-          setOpenId(null);
         }}
         label="選擇哪一天"
       />
@@ -134,7 +124,6 @@ export default function Itinerary({ ctx }: { ctx: Ctx }) {
             // 兩站之間的距離照時間長短拉開，讓一天的鬆緊一眼看得出來
             const gap = diff > 0 ? Math.max(30, Math.min(84, Math.round((diff / 60) * 22))) : 24;
             const nowHere = states.marker?.after === i - 1;
-            const open = openId === it.id;
             return (
               <div key={it.id} className={`tl-row ${st} ${dragId === it.id ? 'dragging' : ''}`}>
                 {i > 0 && (
@@ -166,13 +155,25 @@ export default function Itinerary({ ctx }: { ctx: Ctx }) {
                   </div>
                   <div className="tl-body">
                     <div className="tl-head">
-                      <button className="tl-text" aria-expanded={open} onClick={() => setOpenId(open ? null : it.id)}>
-                        <span className="tl-name">{it.name}</span>
+                      <a
+                        className="tl-text"
+                        href={placeUrl(it)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`在 Google 地圖開啟「${it.name}」`}
+                      >
+                        <span className="tl-name">
+                          {it.name}
+                          <Icon name="nav" size={14} stroke={2.4} />
+                        </span>
                         <span className="sub">
                           {st === 'done' ? '已走過・' : st === 'next' ? '下一站・' : ''}
                           {kindLabel(it.category)}
                           {it.note ? `・${it.note}` : ''}
                         </span>
+                      </a>
+                      <button className="tl-edit" aria-label={`修改「${it.name}」的時間、備註或移除`} onClick={() => setSheet({ item: it })}>
+                        <Icon name="edit" size={19} />
                       </button>
                       <button
                         className="grip"
@@ -186,18 +187,6 @@ export default function Itinerary({ ctx }: { ctx: Ctx }) {
                         <Grip />
                       </button>
                     </div>
-                    {open && (
-                      <div className="tl-actions">
-                        <a href={navUrl(it)} target="_blank" rel="noopener noreferrer">
-                          <Icon name="nav" size={18} />
-                          帶我去
-                        </a>
-                        <button onClick={() => setSheet({ item: it })}>
-                          <Icon name="edit" size={18} />
-                          改時間或備註
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

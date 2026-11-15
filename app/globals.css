@@ -242,7 +242,7 @@ select.input { appearance: none; -webkit-appearance: none; background-image: url
 .rt-node { position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; background: #fff; border: 2px solid var(--blue); color: var(--blue); font-size: 15px; display: flex; align-items: center; justify-content: center; }
 .rt-node.done { background: var(--green); border-color: var(--green); color: #fff; }
 .rt-node.next { width: 40px; height: 40px; margin: -20px 0 0 -20px; background: var(--gold); border-color: var(--gold); color: var(--ink); font-size: 18px; box-shadow: 0 0 0 6px rgba(251, 231, 168, 0.9); }
-.rt-label { position: absolute; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.rt-label { color: inherit; text-decoration: none; position: absolute; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
 .rt-label.r { align-items: flex-end; text-align: right; }
 .rt-label > * { max-width: 100%; }
 .rt-line { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
@@ -288,13 +288,13 @@ select.input { appearance: none; -webkit-appearance: none; background-image: url
 .tl-node.add { background: var(--bg); border-style: dashed; }
 .tl-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .tl-head { display: flex; align-items: flex-start; }
-.tl-text { flex: 1; min-width: 0; min-height: 44px; border: none; background: none; padding: 6px 0 4px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.tl-text { flex: 1; min-width: 0; min-height: 44px; padding: 6px 0 4px; text-align: left; display: flex; flex-direction: column; gap: 2px; color: inherit; text-decoration: none; }
+.tl-name svg { margin-left: 5px; vertical-align: -1px; color: var(--blue); }
+.tl-edit { width: 40px; height: 44px; flex: none; border: none; background: none; padding: 0; color: #6b7c82; display: flex; align-items: center; justify-content: center; }
 .tl-name { font-size: 17px; line-height: 1.3; }
 .tl-row.done .tl-name, .tl-row.done .tl-time { color: var(--muted); }
 .tl-row.next .tl-name { font-size: 20px; }
-.tl-head .grip { width: 44px; height: 44px; }
-.tl-actions { display: flex; flex-wrap: wrap; gap: 0 18px; padding-bottom: 4px; }
-.tl-actions a, .tl-actions button { min-height: 44px; border: none; background: none; padding: 0; color: var(--blue); font-size: 14px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+.tl-head .grip { width: 40px; height: 44px; }
 .tl-add { position: relative; margin-top: 14px; min-height: 48px; border: none; background: none; padding: 0; display: flex; align-items: center; gap: 10px; text-align: left; font-size: 16px; color: var(--blue); }
 
 /* 記帳：蹺蹺板 */
