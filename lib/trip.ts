@@ -7,7 +7,7 @@ import {
   readGuestToken,
 } from './auth';
 import { CURRENCIES, computeBalances, planTransfers } from './money';
-import { CATEGORIES, COVERS, PLACE_KINDS, type Op, type Snapshot } from './types';
+import { CATEGORIES, COVERS, PLACE_KINDS, type ItineraryItem, type Op, type Snapshot } from './types';
 
 export class HttpError extends Error {
   constructor(
@@ -128,6 +128,32 @@ function positiveInt(v: unknown, label: string): number {
   return v;
 }
 
+type CleanItem = Omit<ItineraryItem, 'id' | 'sort'>;
+
+/** 檢查並整理一筆行程地點（單筆新增、修改、批次匯入共用） */
+function cleanItem(it: CleanItem, snap: Snapshot): CleanItem {
+  must(it !== null && typeof it === 'object', 400, '行程格式不正確');
+  const name = text(it.name, 80, '地點名稱');
+  must(typeof it.day === 'string' && DATE_RE.test(it.day), 400, '日期格式不正確');
+  must(it.day >= snap.trip.startDate && it.day <= snap.trip.endDate, 400, '日期不在旅程期間內');
+  must(it.time === null || (typeof it.time === 'string' && TIME_RE.test(it.time)), 400, '時間格式不正確');
+  must(PLACE_KINDS.some((k) => k.key === it.category), 400, '類別不正確');
+  const note = typeof it.note === 'string' ? it.note.trim().slice(0, 200) : '';
+  const hasPoint =
+    typeof it.lat === 'number' && typeof it.lng === 'number' &&
+    Math.abs(it.lat) <= 90 && Math.abs(it.lng) <= 180;
+  return {
+    day: it.day,
+    time: it.time,
+    name,
+    category: it.category,
+    note,
+    placeId: typeof it.placeId === 'string' ? it.placeId.slice(0, 300) : null,
+    lat: hasPoint ? it.lat : null,
+    lng: hasPoint ? it.lng : null,
+  };
+}
+
 function outstandingTransfers(snap: Snapshot): number {
   const rates = Object.fromEntries(snap.currencies.map((c) => [c.code, c.rate]));
   const { net } = computeBalances(
@@ -230,19 +256,7 @@ export async function applyOp(tripId: string, actor: Actor, op: Op): Promise<voi
     }
     case 'itinerary.add':
     case 'itinerary.update': {
-      const it = op.item;
-      const name = text(it.name, 80, '地點名稱');
-      must(DATE_RE.test(it.day), 400, '日期格式不正確');
-      must(it.day >= snap.trip.startDate && it.day <= snap.trip.endDate, 400, '日期不在旅程期間內');
-      must(it.time === null || TIME_RE.test(it.time), 400, '時間格式不正確');
-      must(PLACE_KINDS.some((k) => k.key === it.category), 400, '類別不正確');
-      const note = typeof it.note === 'string' ? it.note.trim().slice(0, 200) : '';
-      const hasPoint =
-        typeof it.lat === 'number' && typeof it.lng === 'number' &&
-        Math.abs(it.lat) <= 90 && Math.abs(it.lng) <= 180;
-      const lat = hasPoint ? it.lat : null;
-      const lng = hasPoint ? it.lng : null;
-      const placeId = typeof it.placeId === 'string' ? it.placeId.slice(0, 300) : null;
+      const it = cleanItem(op.item, snap);
       if (op.op === 'itinerary.add') {
         await q(
           `insert into itinerary_items
@@ -251,7 +265,7 @@ export async function applyOp(tripId: string, actor: Actor, op: Op): Promise<voi
              (select coalesce(max(sort), 0) + 1 from itinerary_items
                where trip_id = $1 and day = $2::date and deleted_at is null),
              $3, $4, $5, $6, $7, $8, $9, $10, $10)`,
-          [tripId, it.day, it.time, name, it.category, note, placeId, lat, lng, actor.memberId],
+          [tripId, it.day, it.time, it.name, it.category, it.note, it.placeId, it.lat, it.lng, actor.memberId],
         );
       } else {
         must(isUuid(op.id), 400, '行程編號不正確');
@@ -259,9 +273,35 @@ export async function applyOp(tripId: string, actor: Actor, op: Op): Promise<voi
           `update itinerary_items set day = $3::date, time = $4, name = $5, category = $6, note = $7,
              place_id = $8, lat = $9, lng = $10, updated_by = $11, updated_at = now()
            where id = $1 and trip_id = $2`,
-          [op.id, tripId, it.day, it.time, name, it.category, note, placeId, lat, lng, actor.memberId],
+          [op.id, tripId, it.day, it.time, it.name, it.category, it.note, it.placeId, it.lat, it.lng, actor.memberId],
         );
       }
+      return;
+    }
+    case 'itinerary.import': {
+      must(Array.isArray(op.items) && op.items.length > 0, 400, '沒有可以匯入的行程');
+      must(op.items.length <= 300, 400, '一次最多匯入 300 筆');
+      const items = op.items.map((raw, i) => {
+        try {
+          return cleanItem(raw, snap);
+        } catch (err) {
+          if (err instanceof HttpError) throw new HttpError(err.status, `第 ${i + 1} 筆：${err.message}`);
+          throw err;
+        }
+      });
+      // 一次寫入整批；每一天接在既有行程後面，並保持匯入時的先後順序
+      await q(
+        `insert into itinerary_items
+           (trip_id, day, sort, time, name, category, note, place_id, lat, lng, created_by, updated_by)
+         select $1::uuid, (x->>'day')::date,
+           (select coalesce(max(sort), 0) from itinerary_items e
+              where e.trip_id = $1::uuid and e.day = (x->>'day')::date and e.deleted_at is null)
+             + row_number() over (partition by x->>'day' order by ord),
+           x->>'time', x->>'name', x->>'category', x->>'note', x->>'placeId',
+           (x->>'lat')::double precision, (x->>'lng')::double precision, $3::uuid, $3::uuid
+         from jsonb_array_elements($2::jsonb) with ordinality as t(x, ord)`,
+        [tripId, JSON.stringify(items), actor.memberId],
+      );
       return;
     }
     case 'itinerary.delete': {

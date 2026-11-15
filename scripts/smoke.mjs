@@ -189,6 +189,29 @@ await step('行程：新增三個地點並重新排序', async () => {
   assert.equal(out.status, 400, '旅程期間以外的日期要被拒絕');
 });
 
+await step('行程：批次匯入接在既有行程後面並保持順序', async () => {
+  const base = { time: null, category: 'sight', note: '', placeId: null, lat: null, lng: null };
+  const items = [
+    { ...base, day: '2027-03-19', name: '匯入甲', time: '18:00', category: 'shopping', lat: 35.0, lng: 135.7, placeId: 'pid-1' },
+    { ...base, day: '2027-03-20', name: '匯入乙' },
+    { ...base, day: '2027-03-19', name: '匯入丙', note: '備註' },
+    { ...base, day: '2027-03-20', name: '匯入丁' },
+  ];
+  const r = await act(mei, { op: 'itinerary.import', items });
+  assert.equal(r.status, 200);
+  const names = (day) => r.data.itinerary.filter((i) => i.day === day).map((i) => i.name);
+  assert.deepEqual(names('2027-03-19'), ['清水寺', '錦市場', '伏見稻荷大社', '匯入甲', '匯入丙']);
+  assert.deepEqual(names('2027-03-20'), ['匯入乙', '匯入丁']);
+  const a = r.data.itinerary.find((i) => i.name === '匯入甲');
+  assert.deepEqual([a.category, a.time, a.lat, a.lng, a.placeId], ['shopping', '18:00', 35, 135.7, 'pid-1']);
+  const bad = await act(owner, { op: 'itinerary.import', items: [{ ...base, day: '2027-03-19', name: '好的' }, { ...base, day: '2027-04-01', name: '範圍外' }] });
+  assert.equal(bad.status, 400, '有一筆不合格就整批拒絕');
+  assert.match(bad.data.error, /第 2 筆/);
+  assert.equal((await snap(owner)).itinerary.length, 7, '被拒絕的那批一筆都不能寫入');
+  const empty = await act(owner, { op: 'itinerary.import', items: [] });
+  assert.equal(empty.status, 400);
+});
+
 await step('待辦清單每個人各自獨立', async () => {
   const r = await act(owner, { op: 'todo.add', text: '換日幣' });
   assert.equal(r.data.todos.length, 1);

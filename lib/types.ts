@@ -79,6 +79,7 @@ export type Op =
       item: Omit<ItineraryItem, 'id' | 'sort'>;
     }
   | { op: 'itinerary.update'; id: string; item: Omit<ItineraryItem, 'id' | 'sort'> }
+  | { op: 'itinerary.import'; items: Omit<ItineraryItem, 'id' | 'sort'>[] }
   | { op: 'itinerary.delete'; id: string }
   | { op: 'itinerary.reorder'; day: string; ids: string[] }
   | { op: 'todo.add'; text: string }
@@ -110,6 +111,7 @@ export const PLACE_KINDS: { key: string; label: string }[] = [
   { key: 'food', label: '餐廳' },
   { key: 'transit', label: '交通' },
   { key: 'stay', label: '住宿' },
+  { key: 'shopping', label: '購物' },
   { key: 'other', label: '其他' },
 ];
 

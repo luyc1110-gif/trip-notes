@@ -6,7 +6,7 @@
     "dev": "next dev -p 3210",
     "build": "next build",
     "start": "next start -p 3210",
-    "test": "node --test lib/money.test.ts",
+    "test": "node --test lib/money.test.ts lib/importPlan.test.ts",
     "db:migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {

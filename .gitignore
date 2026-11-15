@@ -7,3 +7,6 @@ node_modules/
 next-env.d.ts
 *.tsbuildinfo
 .DS_Store
+
+# 個人行程的匯入檔，不進版控
+import/

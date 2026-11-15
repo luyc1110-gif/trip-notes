@@ -5,6 +5,7 @@ import { PLACE_KINDS, type ItineraryItem } from '@/lib/types';
 import type { Ctx } from '../TripApp';
 import MapView, { searchPlaces, type PlaceHit } from '../MapView';
 import { DayRibbon, durLabel, hhmm, mins, stopStates, useNow } from '../timeline';
+import ImportSheet from './ImportSheet';
 import { Grip, Icon, longDate, md, placeUrl, todayIso, tripDays } from '../ui';
 
 const kindLabel = (key: string) => PLACE_KINDS.find((k) => k.key === key)?.label ?? '其他';
@@ -22,6 +23,8 @@ export default function Itinerary({ ctx }: { ctx: Ctx }) {
     route.id && days.includes(route.id) ? route.id : days.includes(today) ? today : days[0],
   );
   const [sheet, setSheet] = useState<{ item?: ItineraryItem } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [openNote, setOpenNote] = useState<string | null>(null);
 
   const dayItems = useMemo(() => snap.itinerary.filter((i) => i.day === day), [snap.itinerary, day]);
 
@@ -155,23 +158,29 @@ export default function Itinerary({ ctx }: { ctx: Ctx }) {
                   </div>
                   <div className="tl-body">
                     <div className="tl-head">
-                      <a
-                        className="tl-text"
-                        href={placeUrl(it)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`在 Google 地圖開啟「${it.name}」`}
-                      >
-                        <span className="tl-name">
+                      <div className="tl-text">
+                        <a
+                          className="tl-name"
+                          href={placeUrl(it)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`在 Google 地圖開啟「${it.name}」`}
+                        >
                           {it.name}
                           <Icon name="nav" size={14} stroke={2.4} />
-                        </span>
-                        <span className="sub">
+                        </a>
+                        {/* 備註預設只露兩行，點一下展開全文 */}
+                        <button
+                          className={`tl-note sub ${openNote === it.id ? 'open' : ''}`}
+                          aria-expanded={openNote === it.id}
+                          disabled={!it.note}
+                          onClick={() => setOpenNote(openNote === it.id ? null : it.id)}
+                        >
                           {st === 'done' ? '已走過・' : st === 'next' ? '下一站・' : ''}
                           {kindLabel(it.category)}
                           {it.note ? `・${it.note}` : ''}
-                        </span>
-                      </a>
+                        </button>
+                      </div>
                       <button className="tl-edit" aria-label={`修改「${it.name}」的時間、備註或移除`} onClick={() => setSheet({ item: it })}>
                         <Icon name="edit" size={19} />
                       </button>
@@ -202,9 +211,19 @@ export default function Itinerary({ ctx }: { ctx: Ctx }) {
             </span>
             <span>{mapsKey ? '搜尋並加一站' : '加一站'}</span>
           </button>
+          <button className="tl-add tl-import" onClick={() => setImporting(true)}>
+            <span className="tl-time" />
+            <span className="tl-slot">
+              <span className="tl-node add">
+                <Icon name="list" size={16} stroke={2.4} />
+              </span>
+            </span>
+            <span>貼上整份行程，一次匯入</span>
+          </button>
         </div>
       </div>
 
+      {importing && <ImportSheet ctx={ctx} days={days} onClose={() => setImporting(false)} />}
       {sheet && <PlaceSheet ctx={ctx} day={day} days={days} item={sheet.item} onClose={() => setSheet(null)} />}
     </div>
   );
@@ -330,7 +349,7 @@ function PlaceSheet({ ctx, day, days, item, onClose }: { ctx: Ctx; day: string; 
 
         <div className="field">
           <label className="label" htmlFor="place-note">備註（可不填）</label>
-          <input id="place-note" className="input" maxLength={200} value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
+          <textarea id="place-note" className="input" rows={3} maxLength={200} value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
         </div>
 
         {error && <p className="neg sm" role="alert">{error}</p>}

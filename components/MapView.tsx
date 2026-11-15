@@ -70,6 +70,21 @@ export async function searchPlaces(key: string, input: string, token: { current:
     });
 }
 
+/** 用一段文字找出一個地點的位置（批次匯入用）；找不到時回傳 null */
+export async function findPlace(key: string, query: string): Promise<{ lat: number; lng: number; placeId: string } | null> {
+  const maps = await loadMaps(key);
+  const lib = await maps.importLibrary('places');
+  const { places } = await lib.Place.searchByText({
+    textQuery: query,
+    fields: ['location'],
+    language: 'zh-TW',
+    maxResultCount: 1,
+  });
+  const p = (places as any[] | undefined)?.[0];
+  if (!p?.location) return null;
+  return { lat: p.location.lat(), lng: p.location.lng(), placeId: p.id };
+}
+
 export type MapPoint = { lat: number; lng: number; label: string; title: string };
 
 function Placeholder() {
